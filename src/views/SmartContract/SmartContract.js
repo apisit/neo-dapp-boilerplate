@@ -6,6 +6,8 @@ import TopNavbar from '../Shared/TopNavbar'
 export default function SmartContract(props) {
     const walletConnectCtx = useWalletConnect()
     const [scripthash, setScripthash] = React.useState("")
+    const [results, setResults] = React.useState({})
+    const [invokeParams, setInvokeParams] = React.useState({});
 
     const manifest = JSON.parse(`{
         "name": "VLATokenContract",
@@ -187,7 +189,7 @@ export default function SmartContract(props) {
         }
     }`)
 
-    const testInvoke = async (method) => {
+    const testInvoke = async (method, params) => {
         const methodName = method.name;
 
         const address = WcSdk.getAccountAddress(walletConnectCtx.session)
@@ -197,6 +199,78 @@ export default function SmartContract(props) {
         const parameters = [];
         const resp = await walletConnectCtx.testInvoke(scripthash, methodName, parameters);
         console.log(resp);
+        setResults({...results, [methodName]: resp});
+    }
+
+    const onChangeParams = (method, param, value) => {
+        var p = {
+            param: {},
+            value: "",
+        }
+        p.param = param
+        p.value = value
+
+        var invokeP = {}
+
+        if (invokeP[method.name] === undefined) {
+            invokeP[method.name] = {}
+        }
+
+        if ("params" in invokeP[method.name]) {
+            console.log(invokeP[method.name]["params"])
+        } else {
+            invokeP[method.name]["params"] = {}
+        }
+        //WIP
+        invokeP[method.name]["params"] = {...invokeP[method.name]["params"], [param.name] :p}
+
+        console.log(invokeP);
+    }
+
+    const renderInput = (method, param) => {
+        switch (param.type) {
+            case 'Hash160':
+                return (
+                    <label className="block">
+                        <span>{param.name}: {param.type}</span>
+                        <input type="text" className="mt-1 w-full rounded" onChange={(e) => {onChangeParams(method, param, e.target.value)}} />
+                    </label>
+                )
+            case 'String':
+                return (
+                    <label className="block">
+                        <span>{param.name}: {param.type}</span>
+                        <input type="text" className="mt-1 w-full rounded" onChange={(e) => {onChangeParams(method, param, e.target.value)}}/>
+                    </label>
+                )
+            case 'ByteArray':
+                return (
+                    <label className="block">
+                        <span>{param.name}: {param.type}</span>
+                        <input type="text" className="mt-1 w-full rounded" onChange={(e) => {onChangeParams(method, param, e.target.value)}}/>
+                    </label>
+                )
+            case 'Any':
+                return (
+                    <label className="block">
+                        <span>{param.name}: {param.type}</span>
+                        <input type="text" className="mt-1 w-full rounded" onChange={(e) => {onChangeParams(method, param, e.target.value)}}/>
+                    </label>
+                )
+            case "Integer":
+                return (
+                    <label className="block">
+                        <span>{param.name}: {param.type}</span>
+                        <input type="number" className="mt-1 w-full rounded" onChange={(e) => {onChangeParams(method, param, e.target.value)}}/>
+                    </label>
+                );
+            default:
+                return (
+                    <div>
+                        {param.name} {param.type}
+                    </div>
+                );
+        }
     }
 
     return (
@@ -212,23 +286,53 @@ export default function SmartContract(props) {
                     <span>Smart Contract script hash</span>
                     <input type="text" className="mt-1 block w-full rounded" onChange={(e) => { setScripthash(e.target.value.trim()) }}></input>
                 </label>
-                <p>{manifest.name}</p>
-                {manifest.abi.methods.map((method) => (
-                    <div className="w-full border rounded-lg p-4">
-                        {method.name}
-                        {
-                            method.parameters.map((param) => (
-                                <div>
-                                    {param.name} {param.type}
-                                </div>
-                            ))
-                        }
+                <div className="my-6">
+                    <p className="text-lg font-semibold">{manifest.name}</p>
+                    <p className="mb-2 text-gray-600">{manifest.extra.Description}</p>
+                    <div className="flex gap-6">
                         <div>
-                            <button className="bg-gray-600 text-white px-2 py-2" onClick={(e) => { testInvoke(method) }}>Test Invoke</button>
+                            <p className="text-xs text-gray-600">Author</p>
+                            <p>{manifest.extra.Author}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-600">Email</p>
+                            <p>{manifest.extra.Email}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-600">Supported Standards</p>
+                            <p>{manifest.supportedstandards.join(", ")}</p>
                         </div>
                     </div>
-                ))
-                }
+                </div>
+                <div className="flex flex-col gap-3">
+                    {manifest.abi.methods.map((method) => (
+                        <div key={method.name} className="w-full border rounded-lg p-4">
+                            <p className="font-medium mb-2">{method.name}</p>
+                            <div className="grid grid-cols-1 gap-2">
+                                {
+                                    method.parameters.map((param) => (
+                                        <div key={param.name}>
+                                            {renderInput(method, param)}
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                            <div className="mt-2">
+                                <button className="bg-gray-600 text-white px-2 py-2 rounded" onClick={(e) => { testInvoke(method) }}>Test Invoke</button>
+                            </div>
+                            {
+                                results[method.name] ?
+                                    <div className="mt-4 border-t pt-2">
+                                        <p className="mb-1">Result</p>
+                                        <textarea className="rounded w-full border border-gray-300" readOnly value={JSON.stringify(results[method.name])}></textarea>
+                                    </div>
+                                    : null
+                            }
+
+                        </div>
+                    ))
+                    }
+                </div>
             </div>
         </div>
     )
